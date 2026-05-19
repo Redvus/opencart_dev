@@ -2,22 +2,46 @@
 class ModelExtensionModuleMultistock extends Model {
 
     // Получение остатков товара на всех складах
+    // public function getProductStocks($product_id) {
+    //     $result = array();
+    //     $query = $this->db->query("SELECT ps.id_storage, ps.stock, s.name_storage, s.nick
+    //                               FROM `" . DB_PREFIX . "1c_mart_product_stock` ps
+    //                               LEFT JOIN `" . DB_PREFIX . "1c_mart_storage` s ON ps.id_storage = s.id_storage
+    //                               WHERE ps.id_product = '" . (int)$product_id . "'
+    //                               AND ps.stock > 0
+    //                               ORDER BY s.name_storage");
+
+    //     foreach ($query->rows as $row) {
+    //         $result[$row['id_storage']] = array(
+    //             'quantity' => $row['stock'],
+    //             'name' => $row['name_storage'],
+    //             'nick' => $row['nick']
+    //         );
+    //     }
+    //     return $result;
+    // }
+
     public function getProductStocks($product_id) {
         $result = array();
-        $query = $this->db->query("SELECT ps.id_storage, ps.stock, s.name_storage, s.nick
-                                  FROM `" . DB_PREFIX . "1c_mart_product_stock` ps
-                                  LEFT JOIN `" . DB_PREFIX . "1c_mart_storage` s ON ps.id_storage = s.id_storage
-                                  WHERE ps.id_product = '" . (int)$product_id . "'
-                                  AND ps.stock > 0
-                                  ORDER BY s.name_storage");
 
-        foreach ($query->rows as $row) {
-            $result[$row['id_storage']] = array(
-                'quantity' => $row['stock'],
-                'name' => $row['name_storage'],
-                'nick' => $row['nick']
+        // Получаем ВСЕ склады (даже те, где нет остатков)
+        $warehouses = $this->db->query("SELECT * FROM `" . DB_PREFIX . "1c_mart_storage` ORDER BY name_storage");
+
+        foreach ($warehouses->rows as $warehouse) {
+            // Получаем остаток для этого склада
+            $stock_query = $this->db->query("SELECT stock FROM `" . DB_PREFIX . "1c_mart_product_stock`
+                                            WHERE id_product = '" . (int)$product_id . "'
+                                            AND id_storage = '" . (int)$warehouse['id_storage'] . "'");
+
+            $quantity = ($stock_query->num_rows > 0) ? (int)$stock_query->row['stock'] : 0;
+
+            $result[$warehouse['id_storage']] = array(
+                'quantity' => $quantity,
+                'name' => $warehouse['name_storage'],
+                'nick' => $warehouse['nick']
             );
         }
+
         return $result;
     }
 

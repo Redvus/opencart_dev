@@ -25,7 +25,6 @@
 
     <!-- ==================== АДМИНКА: Добавляем таблицу складов во вкладку "Данные" ==================== -->
     <file path="admin/view/template/catalog/product_form.twig">
-        <!-- Добавляем заголовок таблицы -->
         <operation>
             <search><![CDATA[<div class="tab-pane" id="tab-data">]]></search>
             <add position="after"><![CDATA[
@@ -71,12 +70,13 @@
         </operation>
     </file>
 
-    <!-- ==================== АДМИНКА: Сохраняем остатки по складам при добавлении товара ==================== -->
+    <!-- ==================== АДМИНКА: Сохраняем остатки по складам ==================== -->
     <file path="admin/model/catalog/product.php">
         <operation>
             <search><![CDATA[public function addProduct($data) {]]></search>
             <add position="after"><![CDATA[
             // Сохраняем остатки по складам
+            $product_id = $this->db->getLastId();
             if (isset($this->request->post['product_warehouse'])) {
                 $this->load->model('extension/module/multistock');
                 foreach ($this->request->post['product_warehouse'] as $warehouse_id => $quantity) {
@@ -86,7 +86,6 @@
             ]]></add>
         </operation>
 
-        <!-- Сохраняем остатки по складам при редактировании товара -->
         <operation>
             <search><![CDATA[public function editProduct($product_id, $data) {]]></search>
             <add position="after"><![CDATA[
@@ -101,21 +100,18 @@
         </operation>
     </file>
 
-    <!-- ==================== КАТАЛОГ: Модифицируем модель товара для учета остатков ==================== -->
+    <!-- ==================== КАТАЛОГ: Модифицируем модель товара ==================== -->
     <file path="catalog/model/catalog/product.php">
-        <!-- Модифицируем подсчет общего количества товаров в категории -->
         <operation>
             <search><![CDATA["SELECT COUNT(*) AS total"]]></search>
             <add position="replace"><![CDATA[SELECT COUNT(DISTINCT p.product_id) AS total]]></add>
         </operation>
 
-        <!-- Модифицируем условие наличия товара в категории -->
         <operation>
             <search><![CDATA["AND p.quantity > 0"]]></search>
             <add position="replace"><![CDATA[AND (SELECT SUM(stock) FROM " . DB_PREFIX . "1c_mart_product_stock pw WHERE pw.id_product = p.product_id) > 0]]></add>
         </operation>
 
-        <!-- Добавляем информацию о складах в данные товара -->
         <operation>
             <search><![CDATA[public function getProduct($product_id) {]]></search>
             <add position="after"><![CDATA[
@@ -127,7 +123,20 @@
         </operation>
     </file>
 
-    <!-- ==================== КАТАЛОГ: Списание товаров при создании заказа ==================== -->
+    <!-- ==================== КАТАЛОГ: Добавляем данные в контроллер товара ==================== -->
+    <file path="catalog/controller/product/product.php">
+        <operation>
+            <search><![CDATA[$product_info = $this->model_catalog_product->getProduct($product_id);]]></search>
+            <add position="after"><![CDATA[
+            // ========== МУЛЬТИСКЛАД - ПОЛУЧАЕМ ОСТАТКИ ==========
+            $this->load->model('extension/module/multistock');
+            $data['warehouse_stocks'] = $this->model_extension_module_multistock->getProductStocks($product_id);
+            // ========== КОНЕЦ МУЛЬТИСКЛАДА ==========
+            ]]></add>
+        </operation>
+    </file>
+
+    <!-- ==================== КАТАЛОГ: Списание товаров при заказе ==================== -->
     <file path="catalog/model/checkout/order.php">
         <operation>
             <search><![CDATA[$this->db->query("UPDATE " . DB_PREFIX . "product SET quantity = (quantity - " . (int)$item['quantity'] . ") WHERE product_id = '" . (int)$item['product_id'] . "' AND subtract = '1'");]]></search>
@@ -139,7 +148,7 @@
             // Получаем остатки по складам
             $warehouse_stocks = $this->model_extension_module_multistock->getProductStocks($item['product_id']);
 
-            // Сортируем склады по убыванию количества (сначала списываем с тех, где больше)
+            // Сортируем склады по убыванию количества
             arsort($warehouse_stocks);
 
             foreach ($warehouse_stocks as $warehouse_id => $quantity) {
@@ -152,7 +161,7 @@
                 $to_subtract -= $subtract_from_this;
             }
 
-            // Обновляем общее количество в таблице product для совместимости с другими модулями
+            // Обновляем общее количество
             $total_quantity = $this->model_extension_module_multistock->getTotalProductStock($item['product_id']);
             $this->db->query("UPDATE " . DB_PREFIX . "product SET quantity = " . (int)$total_quantity . " WHERE product_id = '" . (int)$item['product_id'] . "'");
             ]]></add>

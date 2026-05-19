@@ -81,22 +81,36 @@ class ModelExtensionModuleMultistock extends Model {
     }
 
     // Обновление остатков товара на складе
+    // public function updateProductStock($product_id, $warehouse_id, $quantity) {
+    //     $quantity = (int)$quantity;
+    //     if ($quantity <= 0) {
+    //         // Если количество 0 или меньше, удаляем запись
+    //         $this->db->query("DELETE FROM `" . DB_PREFIX . "1c_mart_product_stock`
+    //                           WHERE id_product = '" . (int)$product_id . "'
+    //                           AND id_storage = '" . (int)$warehouse_id . "'");
+    //     } else {
+    //         // Обновляем или вставляем
+    //         $this->db->query("INSERT INTO `" . DB_PREFIX . "1c_mart_product_stock`
+    //                           (id_product, id_storage, stock)
+    //                           VALUES ('" . (int)$product_id . "', '" . (int)$warehouse_id . "', '" . $quantity . "')
+    //                           ON DUPLICATE KEY UPDATE stock = '" . $quantity . "'");
+    //     }
+
+    //     // Обновляем общее количество в таблице product для совместимости
+    //     $total = $this->getTotalProductStock($product_id);
+    //     $this->db->query("UPDATE `" . DB_PREFIX . "product` SET quantity = '" . $total . "' WHERE product_id = '" . (int)$product_id . "'");
+    // }
+
     public function updateProductStock($product_id, $warehouse_id, $quantity) {
         $quantity = (int)$quantity;
-        if ($quantity <= 0) {
-            // Если количество 0 или меньше, удаляем запись
-            $this->db->query("DELETE FROM `" . DB_PREFIX . "1c_mart_product_stock`
-                              WHERE id_product = '" . (int)$product_id . "'
-                              AND id_storage = '" . (int)$warehouse_id . "'");
-        } else {
-            // Обновляем или вставляем
-            $this->db->query("INSERT INTO `" . DB_PREFIX . "1c_mart_product_stock`
-                              (id_product, id_storage, stock)
-                              VALUES ('" . (int)$product_id . "', '" . (int)$warehouse_id . "', '" . $quantity . "')
-                              ON DUPLICATE KEY UPDATE stock = '" . $quantity . "'");
-        }
 
-        // Обновляем общее количество в таблице product для совместимости
+        // Убрали удаление, теперь храним даже нули
+        $this->db->query("INSERT INTO `" . DB_PREFIX . "1c_mart_product_stock`
+                          (id_product, id_storage, stock)
+                          VALUES ('" . (int)$product_id . "', '" . (int)$warehouse_id . "', '" . $quantity . "')
+                          ON DUPLICATE KEY UPDATE stock = '" . $quantity . "'");
+
+        // Обновляем общее количество
         $total = $this->getTotalProductStock($product_id);
         $this->db->query("UPDATE `" . DB_PREFIX . "product` SET quantity = '" . $total . "' WHERE product_id = '" . (int)$product_id . "'");
     }
