@@ -64,7 +64,7 @@
                     <div class="form-group">
                         <label class="col-sm-2 control-label">{{ entry_storages }}</label>
                         <div class="col-sm-10">
-                            <div class="table-responsive">
+                            <div id="storages-table-container" class="table-responsive">
                                 <table class="table table-bordered table-hover">
                                     <thead>
                                         <tr>
@@ -81,8 +81,8 @@
                                                 <tr>
                                                     <td>{{ storage.id_storage }}</td>
                                                     <td>{{ storage.name_storage }}</td>
-                                                    <td>{{ storage.nick }}</td>
-                                                    <td>{{ storage.desc_storage }}</td>
+                                                    <td><input type="text" name="store[{{ storage.id_storage }}][nick]" value="{{ storage.nick }}" class="form-control"></td>
+                                                    <td><input type="text" name="store[{{ storage.id_storage }}][desc]" value="{{ storage.desc_storage }}" class="form-control"></td>
                                                     <td><input type="checkbox" name="delete_ids[]" value="{{ storage.id_storage }}"></td>
                                                 </tr>
                                             {% endfor %}
@@ -94,8 +94,9 @@
                                     </tbody>
                                 </table>
                             </div>
-                            <button type="submit" name="delete_storage" value="1" class="btn btn-danger">{{ button_delete_storage }}</button>
-                            <button type="submit" name="create_tables" value="1" class="btn btn-info">{{ button_create_tables }}</button>
+                            <button type="button" id="btn_delete_storage" class="btn btn-danger">{{ button_delete_storage }}</button>
+                            <button type="button" id="btn_create_tables" class="btn btn-info">{{ button_create_tables }}</button>
+                            <button type="button" id="btn_update_storages" class="btn btn-primary">Сохранить изменения</button>
                         </div>
                     </div>
 
@@ -104,16 +105,16 @@
                         <div class="col-sm-10">
                             <div class="row">
                                 <div class="col-sm-4">
-                                    <input type="text" name="storage_name" class="form-control" placeholder="{{ entry_warehouse_name }}">
+                                    <input type="text" name="storage_name" id="storage_name" class="form-control" placeholder="{{ entry_warehouse_name }}">
                                 </div>
                                 <div class="col-sm-3">
-                                    <input type="text" name="storage_nick" class="form-control" placeholder="{{ entry_nick }}">
+                                    <input type="text" name="storage_nick" id="storage_nick" class="form-control" placeholder="{{ entry_nick }}">
                                 </div>
                                 <div class="col-sm-3">
-                                    <input type="text" name="storage_desc" class="form-control" placeholder="{{ entry_desc }}">
+                                    <input type="text" name="storage_desc" id="storage_desc" class="form-control" placeholder="{{ entry_desc }}">
                                 </div>
                                 <div class="col-sm-2">
-                                    <button type="submit" name="add_storage" value="1" class="btn btn-success">{{ button_add_storage }}</button>
+                                    <button type="button" id="btn_add_storage" class="btn btn-success">{{ button_add_storage }}</button>
                                 </div>
                             </div>
                         </div>
@@ -125,4 +126,174 @@
         </div>
     </div>
 </div>
+
+<script type="text/javascript">
+$(document).ready(function() {
+    var user_token = '{{ user_token }}';
+
+    // Добавление склада через AJAX
+    $('#btn_add_storage').on('click', function() {
+        var name = $('#storage_name').val();
+        var nick = $('#storage_nick').val();
+        var desc = $('#storage_desc').val();
+
+        if (name == '') {
+            alert('Введите название склада');
+            return;
+        }
+
+        $.ajax({
+            url: 'index.php?route=extension/module/multistock/addStorageAjax&user_token=' + user_token,
+            type: 'post',
+            data: {
+                name: name,
+                nick: nick,
+                desc: desc
+            },
+            dataType: 'json',
+            beforeSend: function() {
+                $('#btn_add_storage').text('Добавление...').prop('disabled', true);
+            },
+            success: function(json) {
+                if (json.error) {
+                    alert(json.error);
+                } else if (json.success) {
+                    $('#storage_name').val('');
+                    $('#storage_nick').val('');
+                    $('#storage_desc').val('');
+                    loadStoragesTable();
+                }
+            },
+            complete: function() {
+                $('#btn_add_storage').text('Добавить склад').prop('disabled', false);
+            },
+            error: function(xhr, ajaxOptions, thrownError) {
+                alert('Ошибка: ' + thrownError);
+                console.log(xhr.responseText);
+            }
+        });
+    });
+
+    // Удаление выбранных складов
+    $('#btn_delete_storage').on('click', function() {
+        var selected = [];
+        $('input[name="delete_ids[]"]:checked').each(function() {
+            selected.push($(this).val());
+        });
+
+        if (selected.length == 0) {
+            alert('Выберите склады для удаления');
+            return;
+        }
+
+        if (confirm('Удалить выбранные склады? Данные об остатках будут также удалены.')) {
+            $.ajax({
+                url: 'index.php?route=extension/module/multistock/deleteStorageAjax&user_token=' + user_token,
+                type: 'post',
+                data: {
+                    delete_ids: selected
+                },
+                dataType: 'json',
+                beforeSend: function() {
+                    $('#btn_delete_storage').text('Удаление...').prop('disabled', true);
+                },
+                success: function(json) {
+                    if (json.success) {
+                        loadStoragesTable();
+                    }
+                },
+                complete: function() {
+                    $('#btn_delete_storage').text('Удалить отмеченные').prop('disabled', false);
+                }
+            });
+        }
+    });
+
+    // Создание таблиц
+    $('#btn_create_tables').on('click', function() {
+        if (confirm('Создать таблицы складов и остатков?')) {
+            $.ajax({
+                url: 'index.php?route=extension/module/multistock/createTablesAjax&user_token=' + user_token,
+                type: 'post',
+                dataType: 'json',
+                beforeSend: function() {
+                    $('#btn_create_tables').text('Создание...').prop('disabled', true);
+                },
+                success: function(json) {
+                    if (json.success) {
+                        loadStoragesTable();
+                    } else if (json.error) {
+                        alert(json.error);
+                    }
+                },
+                complete: function() {
+                    $('#btn_create_tables').text('Создать таблицы').prop('disabled', false);
+                }
+            });
+        }
+    });
+
+    // Функция загрузки таблицы складов
+    function loadStoragesTable() {
+        $.ajax({
+            url: 'index.php?route=extension/module/multistock/getStoragesTable&user_token=' + user_token,
+            type: 'get',
+            dataType: 'html',
+            success: function(html) {
+                $('#storages-table-container').html(html);
+            },
+            error: function(xhr, ajaxOptions, thrownError) {
+                console.log('Ошибка загрузки таблицы: ' + thrownError);
+            }
+        });
+    }
+
+    // Сохранение полей складов через AJAX
+    $('#btn_update_storages').on('click', function() {
+        var storeData = {};
+
+        // Собираем данные из таблицы
+        $('input[name^="store["]').each(function() {
+            var name = $(this).attr('name');
+            var match = name.match(/store\[(\d+)\]\[(nick|desc)\]/);
+            if (match) {
+                var storage_id = match[1];
+                var field = match[2];
+                if (!storeData[storage_id]) {
+                    storeData[storage_id] = {};
+                }
+                storeData[storage_id][field] = $(this).val();
+            }
+        });
+
+        $.ajax({
+            url: 'index.php?route=extension/module/multistock/updateStoragesAjax&user_token={{ user_token }}',
+            type: 'post',
+            data: {
+                store: storeData
+            },
+            dataType: 'json',
+            beforeSend: function() {
+                $('#btn_update_storages').text('Сохранение...').prop('disabled', true);
+            },
+            success: function(json) {
+                if (json.success) {
+                    $('#btn_update_storages').text('Сохранено!');
+                    setTimeout(function() {
+                        $('#btn_update_storages').text('Сохранить изменения').prop('disabled', false);
+                    }, 1000);
+                } else if (json.error) {
+                    alert(json.error);
+                    $('#btn_update_storages').text('Сохранить изменения').prop('disabled', false);
+                }
+            },
+            error: function() {
+                alert('Ошибка сохранения');
+                $('#btn_update_storages').text('Сохранить изменения').prop('disabled', false);
+            }
+        });
+    });
+});
+</script>
+
 {{ footer }}

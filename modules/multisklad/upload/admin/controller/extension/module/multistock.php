@@ -28,10 +28,16 @@ class ControllerExtensionModuleMultistock extends Controller {
 
             if (isset($this->request->post['delete_storage']) && isset($this->request->post['delete_ids'])) {
                 foreach ($this->request->post['delete_ids'] as $id) {
-                    $this->model_extension_module_multistock->deleteStorage($id);
+                    $this->model_extension_module_multistock->removeStorages(array($id));
                 }
                 $this->session->data['success'] = $this->language->get('text_storage_deleted');
             }
+
+            // ===== НОВЫЙ КОД: Сохранение полей складов =====
+            if (isset($this->request->post['store']) && is_array($this->request->post['store'])) {
+                $this->model_extension_module_multistock->updateStorages($this->request->post['store']);
+            }
+            // =============================================
 
             // Сохраняем настройки модуля
             if (!isset($this->request->get['module_id'])) {
@@ -122,5 +128,123 @@ class ControllerExtensionModuleMultistock extends Controller {
     public function uninstall() {
         $this->load->model('extension/module/multistock');
         $this->model_extension_module_multistock->deleteTables();
+    }
+
+    // ==================== AJAX МЕТОДЫ ====================
+
+    // Добавление склада через AJAX
+    public function addStorageAjax() {
+        $json = array();
+
+        $this->load->language('extension/module/multistock');
+        $this->load->model('extension/module/multistock');
+
+        if (isset($this->request->post['name']) && !empty($this->request->post['name'])) {
+            $this->model_extension_module_multistock->addStorage(
+                $this->request->post['name'],
+                $this->request->post['nick'],
+                $this->request->post['desc']
+            );
+            $json['success'] = true;
+        } else {
+            $json['error'] = $this->language->get('error_warehouse_name');
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
+    // Удаление складов через AJAX
+    public function deleteStorageAjax() {
+        $json = array();
+
+        $this->load->model('extension/module/multistock');
+
+        if (isset($this->request->post['delete_ids']) && is_array($this->request->post['delete_ids'])) {
+            foreach ($this->request->post['delete_ids'] as $id) {
+                $this->model_extension_module_multistock->removeStorages(array($id));
+            }
+            $json['success'] = true;
+        } else {
+            $json['error'] = 'Не выбраны склады для удаления';
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
+    // Создание таблиц через AJAX
+    public function createTablesAjax() {
+        $json = array();
+
+        $this->load->model('extension/module/multistock');
+
+        try {
+            $this->model_extension_module_multistock->createTables();
+            $json['success'] = true;
+        } catch (Exception $e) {
+            $json['error'] = $e->getMessage();
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
+    // Получение обновленной таблицы складов через AJAX
+    public function getStoragesTable() {
+        $this->load->language('extension/module/multistock');
+        $this->load->model('extension/module/multistock');
+
+        $storages = $this->model_extension_module_multistock->getStorages();
+
+        $html = '<table class="table table-bordered table-hover">
+            <thead>
+                <tr>
+                    <td class="text-left">ID</td>
+                    <td class="text-left">' . $this->language->get('entry_warehouse_name') . '</td>
+                    <td class="text-left">' . $this->language->get('entry_nick') . '</td>
+                    <td class="text-left">' . $this->language->get('entry_desc') . '</td>
+                    <td class="text-left">' . $this->language->get('entry_delete') . '</td>
+                </tr>
+            </thead>
+            <tbody>';
+
+        if ($storages) {
+            foreach ($storages as $storage) {
+                $html .= '<tr>
+                    <td>' . $storage['id_storage'] . '</td>
+                    <td>' . htmlspecialchars($storage['name_storage']) . '</td>
+                    <td><input type="text" name="store[' . $storage['id_storage'] . '][nick]" value="' . htmlspecialchars($storage['nick']) . '" class="form-control"></td>
+                    <td><input type="text" name="store[' . $storage['id_storage'] . '][desc]" value="' . htmlspecialchars($storage['desc_storage']) . '" class="form-control"></td>
+                    <td><input type="checkbox" name="delete_ids[]" value="' . $storage['id_storage'] . '"></td>
+                </tr>';
+            }
+        } else {
+            $html .= '<tr>
+                <td colspan="5" class="text-center">' . $this->language->get('text_no_storages') . '</td>
+            </tr>';
+        }
+
+        $html .= '</tbody>
+        </table>';
+
+        $this->response->setOutput($html);
+    }
+
+    // Сохранение полей складов через AJAX
+    public function updateStoragesAjax() {
+        $json = array();
+
+        $this->load->model('extension/module/multistock');
+
+        if (isset($this->request->post['store']) && is_array($this->request->post['store'])) {
+            $this->model_extension_module_multistock->updateStorages($this->request->post['store']);
+            $json['success'] = true;
+        } else {
+            $json['error'] = 'Нет данных для сохранения';
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
     }
 }
