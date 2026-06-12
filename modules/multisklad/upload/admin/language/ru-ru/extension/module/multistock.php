@@ -1,6 +1,6 @@
 <?php
 // Heading
-$_['heading_title'] = 'Мультисклад (1С Март)';
+$_['heading_title'] = 'Мультисклад';
 
 // Text
 $_['text_extension'] = 'Расширения';

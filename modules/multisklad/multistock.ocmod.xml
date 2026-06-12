@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <modification>
-    <name>Мультисклад с поддержкой 1С Март</name>
-    <code>multistock_1c_mart</code>
+    <name>Мультисклад 1С</name>
+    <code>multistock_1c</code>
     <version>1.0</version>
     <author>Redvus</author>
     <link>https://redvus.ru</link>
