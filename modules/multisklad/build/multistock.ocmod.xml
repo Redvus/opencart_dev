@@ -7,7 +7,7 @@
     <link>https://redvus.ru</link>
 
     <!-- ==================== АДМИНКА: Загружаем данные складов ==================== -->
-    <file path="admin/controller/catalog/product.php">
+    <file path="frsult/controller/catalog/product.php">
         <operation>
             <search><![CDATA[$this->load->model('catalog/product');]]></search>
             <add position="after"><![CDATA[
@@ -24,7 +24,7 @@
     </file>
 
     <!-- ==================== АДМИНКА: Добавляем таблицу складов во вкладку "Данные" ==================== -->
-    <file path="admin/view/template/catalog/product_form.twig">
+    <file path="frsult/view/template/catalog/product_form.twig">
         <operation>
             <search><![CDATA[<div class="tab-pane" id="tab-data">]]></search>
             <add position="after"><![CDATA[
@@ -71,7 +71,7 @@
     </file>
 
     <!-- ==================== АДМИНКА: Сохраняем остатки по складам ==================== -->
-    <file path="admin/model/catalog/product.php">
+    <file path="frsult/model/catalog/product.php">
         <operation>
             <search><![CDATA[public function addProduct($data) {]]></search>
             <add position="after"><![CDATA[
