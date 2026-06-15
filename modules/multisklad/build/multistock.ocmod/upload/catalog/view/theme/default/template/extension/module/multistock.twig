@@ -1,0 +1,21 @@
+{% if warehouse_stocks %}
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h4 class="panel-title">Наличие на складах</h4>
+    </div>
+    <div class="panel-body">
+        <ul class="list-unstyled">
+            {% for warehouse_id, stock in warehouse_stocks %}
+                <li>
+                    <strong>{{ stock.name }}:</strong>
+                    {% if stock.quantity > 0 %}
+                        <span class="text-success">В наличии: {{ stock.quantity }} шт.</span>
+                    {% else %}
+                        <span class="text-danger">Нет в наличии</span>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
